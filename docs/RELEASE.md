@@ -34,3 +34,19 @@ Optional release asset outside the extension ZIP:
 - Load the ZIP or unpacked folder in a clean Chrome profile if possible.
 - Verify the extension icon renders correctly.
 - Re-run a quick GitHub textarea test and a ChatGPT rich editor test.
+
+## Chrome Web Store assets
+
+Generated assets live under `branding/chrome-web-store/`:
+
+- Screenshots
+  - `branding/chrome-web-store/screenshots/screenshot-github-1280x800.png`
+  - `branding/chrome-web-store/screenshots/screenshot-chatgpt-1280x800.png`
+  - `branding/chrome-web-store/screenshots/screenshot-triggers-1280x800.png`
+- Small promo tile
+  - `branding/chrome-web-store/small-promo-tile-440x280.png`
+- Marquee promo tile
+  - `branding/chrome-web-store/marquee-promo-tile-1400x560.png`
+
+These exports are RGB PNGs with no alpha.
+
