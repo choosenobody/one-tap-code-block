@@ -168,28 +168,112 @@
     return true;
   }
 
+  function getPointRange(x, y) {
+    if (typeof document.caretRangeFromPoint === 'function') {
+      return document.caretRangeFromPoint(x, y);
+    }
+
+    if (typeof document.caretPositionFromPoint === 'function') {
+      const position = document.caretPositionFromPoint(x, y);
+
+      if (!position) {
+        return null;
+      }
+
+      const range = document.createRange();
+      range.setStart(position.offsetNode, position.offset);
+      range.collapse(true);
+      return range;
+    }
+
+    return null;
+  }
+
+  function placeContentEditableCaret(editable, event) {
+    const range = getPointRange(event.clientX, event.clientY);
+
+    if (!range || !editable.contains(range.startContainer) || !editable.contains(range.endContainer)) {
+      return false;
+    }
+
+    const selection = window.getSelection();
+
+    if (!selection) {
+      return false;
+    }
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  }
+
+  function handleTextareaTrigger(textarea) {
+    textarea.focus();
+    return insertOrWrapTextarea(textarea);
+  }
+
+  function handleContentEditableTrigger(editable, event) {
+    editable.focus();
+
+    if (!getSelectionRange(editable)) {
+      if (!event || event.type !== 'mousedown' || !placeContentEditableCaret(editable, event)) {
+        return false;
+      }
+    }
+
+    return insertOrWrapContentEditable(editable);
+  }
+
+  function handleEditableTarget(target, event) {
+    if (!target) {
+      return false;
+    }
+
+    if (target.kind === 'textarea') {
+      return handleTextareaTrigger(target.element);
+    }
+
+    return handleContentEditableTrigger(target.element, event);
+  }
+
+  function getKeyboardEditableTarget(event) {
+    const activeElement = document.activeElement;
+
+    if (isSupportedTextarea(activeElement)) {
+      return { kind: 'textarea', element: activeElement };
+    }
+
+    const editable = findContentEditable(event.target) || findContentEditable(activeElement);
+    return editable ? { kind: 'contenteditable', element: editable } : null;
+  }
+
+  function getMouseEditableTarget(event) {
+    const element = getElement(event.target);
+
+    if (isSupportedTextarea(element)) {
+      return { kind: 'textarea', element };
+    }
+
+    const editable = findContentEditable(event.target);
+    return editable ? { kind: 'contenteditable', element: editable } : null;
+  }
+
   document.addEventListener('keydown', (event) => {
     if (event.code !== 'AltRight' || event.repeat) {
       return;
     }
 
-    const activeElement = document.activeElement;
+    if (handleEditableTarget(getKeyboardEditableTarget(event), event)) {
+      event.preventDefault();
+    }
+  });
 
-    if (isSupportedTextarea(activeElement)) {
-      if (insertOrWrapTextarea(activeElement)) {
-        event.preventDefault();
-      }
-
+  document.addEventListener('mousedown', (event) => {
+    if (event.button !== 1) {
       return;
     }
 
-    const editable = findContentEditable(event.target) || findContentEditable(activeElement);
-
-    if (!editable) {
-      return;
-    }
-
-    if (insertOrWrapContentEditable(editable)) {
+    if (handleEditableTarget(getMouseEditableTarget(event), event)) {
       event.preventDefault();
     }
   });
