@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "One Tap Code Block",
-  "version": "0.1.0",
-  "description": "Press Right Alt in supported text fields to insert or wrap a Markdown fenced code block.",
+  "version": "0.3.1",
+  "description": "Insert or wrap Markdown code blocks with Right Alt or middle mouse in supported editors.",
   "content_scripts": [
     {
       "matches": [
