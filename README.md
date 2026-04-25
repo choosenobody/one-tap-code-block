@@ -107,6 +107,11 @@ Example from the project root:
 zip -r one-tap-code-block-0.3.1.zip manifest.json content.js icons README.md CHANGELOG.md docs
 ```
 
+## Early tester feedback
+
+- Feedback guide: `docs/FEEDBACK.md`
+- GitHub bug report template: `.github/ISSUE_TEMPLATE/bug_report.md`
+
 ## Testing
 
 See `docs/TESTING.md` for the tester checklist.
