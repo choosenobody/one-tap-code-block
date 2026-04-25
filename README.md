@@ -4,12 +4,13 @@
 
 This Chrome Extension inserts or wraps a Markdown fenced code block when you press **Right Alt** inside a `textarea`.
 
-Supported field for I1.1:
+Supported field for I1.2:
 - `textarea`
 
-Intentionally ignored for I1.1:
+Intentionally ignored for I1.2:
 - all single-line `input` fields
 - `contenteditable`
+- middle mouse
 
 Behavior:
 - No selection: inserts
@@ -27,6 +28,8 @@ Behavior:
 
   and places the cursor after the selected text, before the newline and closing fence.
 - When wrapping text next to prose, the extension adds surrounding newlines when needed so the fenced block starts and ends cleanly on its own lines.
+- Repeated `keydown` events are ignored, so holding Right Alt does not spam multiple insertions.
+- After changes, the extension dispatches an `input` event and restores `scrollTop` to reduce framework sync issues and scroll jumps.
 
 ## How to load locally in Chrome
 
@@ -42,6 +45,8 @@ Behavior:
 - [ ] `textarea` selected text wraps cleanly
 - [ ] Opening fence starts on its own line
 - [ ] Closing fence starts on its own line
+- [ ] Holding Right Alt should not repeatedly insert blocks
+- [ ] Long `textarea` should not jump unexpectedly after insertion
 - [ ] GitHub Issue title input should not trigger
 - [ ] GitHub Issue description textarea should trigger
 - [ ] `readonly` textarea should not trigger

@@ -12,6 +12,7 @@
     }
 
     const value = textarea.value;
+    const scrollTop = textarea.scrollTop;
     const selectedText = value.slice(start, end);
     let insertedText;
     let cursor;
@@ -30,14 +31,16 @@
     }
 
     textarea.value = value.slice(0, start) + insertedText + value.slice(end);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
     textarea.focus();
     textarea.setSelectionRange(cursor, cursor);
+    textarea.scrollTop = scrollTop;
 
     return true;
   }
 
   document.addEventListener('keydown', (event) => {
-    if (event.code !== 'AltRight') {
+    if (event.code !== 'AltRight' || event.repeat) {
       return;
     }
 
