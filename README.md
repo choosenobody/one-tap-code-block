@@ -107,6 +107,10 @@ Example from the project root:
 zip -r one-tap-code-block-0.3.1.zip manifest.json content.js icons README.md CHANGELOG.md docs
 ```
 
+## Privacy
+
+See `PRIVACY.md`.
+
 ## Early tester feedback
 
 - Feedback guide: `docs/FEEDBACK.md`
