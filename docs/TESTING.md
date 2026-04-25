@@ -6,33 +6,30 @@
 2. Confirm the extension icon appears with the final black Alt-key mark.
 3. Open Chrome DevTools console and verify there is no startup error.
 
-## Core checks
+## Manual testing checklist
 
-1. GitHub Issue description `textarea`
-   - Right Alt inserts a fenced code block
-   - Right Alt wraps selected text cleanly
-   - Middle mouse inserts/wraps cleanly
-2. GitHub Issue title `input`
-   - Right Alt does not trigger
-   - Middle mouse does not trigger
-3. ChatGPT message input
-   - Right Alt inserts a fenced code block
-   - Right Alt wraps selected text cleanly
-   - Middle mouse inserts/wraps cleanly
-4. Browser safety
-   - Middle-click on a link keeps normal browser behavior
-   - Middle-click on page background does nothing special
-   - Middle-click on buttons/non-editable UI does nothing special
-   - Normal page text selected outside an editor is not modified
-5. Anti-repeat
-   - Holding Right Alt inserts at most one block
-   - Releasing and pressing Right Alt again inserts one new block
+- [ ] GitHub Issue description `textarea`: Right Alt works
+- [ ] GitHub Issue description `textarea`: middle mouse works
+- [ ] GitHub Issue title `input`: ignored
+- [ ] ChatGPT input: Right Alt works
+- [ ] ChatGPT input: middle mouse works
+- [ ] Selected text wrapping works in `textarea`
+- [ ] Selected text wrapping works in `contenteditable`
+- [ ] Holding Right Alt does not spam multiple blocks
+- [ ] Release Right Alt and press again inserts once again
+- [ ] Middle-click link preserves normal browser behavior
+- [ ] Middle-click page background does nothing
+- [ ] Middle-click button/non-editable UI does nothing
+- [ ] Baidu search input ignored
+- [ ] Telegram Web optional compatibility test
+- [ ] Normal webpage selected text outside editor is not modified
+- [ ] Browser console has no errors
 
-## Compatibility checks
+## Compatibility notes
 
-- Baidu search input remains ignored
+- Baidu search input is intentionally ignored
 - Telegram Web works only if its editor exposes a compatible rich-editor structure in the same document
-- If Telegram Web fails, inspect whether it uses iframe, closed shadow DOM, or another non-standard editing surface
+- Telegram Web may fail if it uses iframe, closed shadow DOM, or another non-standard editing surface
 
 ## Optional troubleshooting
 
