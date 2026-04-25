@@ -1,43 +1,37 @@
 (() => {
-  const SUPPORTED_INPUT_TYPES = new Set([
-    'text',
-    'search',
-    'url',
-    'email',
-    'password',
-    'tel'
-  ]);
-
-  function isSupportedEditable(element) {
-    if (element instanceof HTMLTextAreaElement) {
-      return !element.disabled && !element.readOnly;
-    }
-
-    if (!(element instanceof HTMLInputElement)) {
-      return false;
-    }
-
-    return !element.disabled && !element.readOnly && SUPPORTED_INPUT_TYPES.has(element.type);
+  function isSupportedTextarea(element) {
+    return element instanceof HTMLTextAreaElement && !element.disabled && !element.readOnly;
   }
 
-  function insertOrWrap(element) {
-    const start = element.selectionStart;
-    const end = element.selectionEnd;
+  function insertOrWrap(textarea) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
 
     if (typeof start !== 'number' || typeof end !== 'number') {
       return false;
     }
 
-    const value = element.value;
+    const value = textarea.value;
     const selectedText = value.slice(start, end);
-    const insertedText = selectedText ? `\`\`\`\n${selectedText}\n\`\`\`` : '\`\`\`\n\n\`\`\`';
-    const nextValue = value.slice(0, start) + insertedText + value.slice(end);
+    let insertedText;
+    let cursor;
 
-    element.value = nextValue;
-    element.focus();
+    if (start === end) {
+      insertedText = '```\n\n```';
+      cursor = start + 4;
+    } else {
+      const charBefore = value[start - 1];
+      const charAfter = value[end];
+      const prefix = start === 0 || charBefore === '\n' ? '' : '\n\n';
+      const suffix = end === value.length || charAfter === '\n' ? '' : '\n';
 
-    const cursor = selectedText ? start + 4 + selectedText.length : start + 4;
-    element.setSelectionRange(cursor, cursor);
+      insertedText = `${prefix}\`\`\`\n${selectedText}\n\`\`\`${suffix}`;
+      cursor = start + prefix.length + 4 + selectedText.length;
+    }
+
+    textarea.value = value.slice(0, start) + insertedText + value.slice(end);
+    textarea.focus();
+    textarea.setSelectionRange(cursor, cursor);
 
     return true;
   }
@@ -49,7 +43,7 @@
 
     const activeElement = document.activeElement;
 
-    if (!isSupportedEditable(activeElement)) {
+    if (!isSupportedTextarea(activeElement)) {
       return;
     }
 
