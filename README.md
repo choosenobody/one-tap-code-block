@@ -51,6 +51,12 @@ One Tap Code Block is a minimal Chrome Extension that inserts or wraps Markdown 
 - Releasing and pressing Right Alt again inserts one new block.
 - Middle mouse only intercepts clicks inside supported editable areas.
 
+## Branding assets
+
+- Runtime extension icons live in `icons/` and are referenced by `manifest.json`.
+- A separate high-resolution store/display asset lives at `branding/store-icon-512.png`.
+- Chrome still uses the manifest icon set for the installed extension surface, so this split is mainly for release packaging, docs, and store-facing materials.
+
 ## Debug mode
 
 `content.js` includes:

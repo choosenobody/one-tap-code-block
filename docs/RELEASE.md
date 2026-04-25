@@ -9,7 +9,8 @@
    - `icons/icon48.png`
    - `icons/icon128.png`
 4. Confirm `manifest.json` references the same icon paths.
-5. Confirm the unpacked extension loads cleanly in Chrome.
+5. Confirm `branding/store-icon-512.png` exists for release/store-facing materials.
+6. Confirm the unpacked extension loads cleanly in Chrome.
 
 ## Package as ZIP
 
@@ -24,6 +25,9 @@ Do not include:
 - local temp files
 - editor settings
 - OS junk files
+
+Optional release asset outside the extension ZIP:
+- `branding/store-icon-512.png`
 
 ## Final sanity check
 
