@@ -115,6 +115,8 @@ See `PRIVACY.md`.
 
 - Feedback guide: `docs/FEEDBACK.md`
 - GitHub bug report template: `.github/ISSUE_TEMPLATE/bug_report.md`
+- GitHub feature request template: `.github/ISSUE_TEMPLATE/feature_request.md`
+- GitHub general feedback template: `.github/ISSUE_TEMPLATE/general_feedback.md`
 
 ## Testing
 
