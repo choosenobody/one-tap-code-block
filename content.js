@@ -1,4 +1,6 @@
 (() => {
+  const DEBUG = false;
+
   function isSupportedTextarea(element) {
     return element instanceof HTMLTextAreaElement && !element.disabled && !element.readOnly;
   }
@@ -11,30 +13,95 @@
     return node instanceof Node ? node.parentElement : null;
   }
 
+  function getParentElement(element) {
+    if (!element) {
+      return null;
+    }
+
+    if (element.parentElement) {
+      return element.parentElement;
+    }
+
+    const root = typeof element.getRootNode === 'function' ? element.getRootNode() : null;
+    return root && root.host instanceof Element ? root.host : null;
+  }
+
+  function getContentEditableValue(element) {
+    return element && element.getAttribute ? element.getAttribute('contenteditable') : null;
+  }
+
+  function isEditableRoot(element) {
+    if (!(element instanceof Element) || element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+      return false;
+    }
+
+    const contentEditable = getContentEditableValue(element);
+
+    if (contentEditable === 'false') {
+      return false;
+    }
+
+    if (contentEditable === 'true' || contentEditable === 'plaintext-only' || contentEditable === '') {
+      return true;
+    }
+
+    if (!element.isContentEditable) {
+      return false;
+    }
+
+    if (element.getAttribute('role') === 'textbox') {
+      return true;
+    }
+
+    const parent = getParentElement(element);
+    return !(parent instanceof Element) || !parent.isContentEditable;
+  }
+
   function findContentEditable(node) {
+    let current = getElement(node);
+
+    while (current) {
+      if (getContentEditableValue(current) === 'false') {
+        return null;
+      }
+
+      if (isEditableRoot(current)) {
+        return current;
+      }
+
+      current = getParentElement(current);
+    }
+
+    return null;
+  }
+
+  function describeNode(node) {
     const element = getElement(node);
 
     if (!element) {
       return null;
     }
 
-    const editable = element.closest('[contenteditable="true"], [contenteditable="plaintext-only"], [contenteditable=""]');
+    return {
+      tagName: element.tagName,
+      className: typeof element.className === 'string' ? element.className : '',
+      role: element.getAttribute ? element.getAttribute('role') : null,
+      contenteditable: getContentEditableValue(element),
+      isContentEditable: Boolean(element.isContentEditable)
+    };
+  }
 
-    if (!editable) {
-      return null;
+  function debugLog(trigger, event, details) {
+    if (!DEBUG) {
+      return;
     }
 
-    let current = element;
-
-    while (current && current !== editable) {
-      if (current.getAttribute && current.getAttribute('contenteditable') === 'false') {
-        return null;
-      }
-
-      current = current.parentElement;
-    }
-
-    return editable.getAttribute('contenteditable') === 'false' ? null : editable;
+    console.log('[One Tap Code Block]', {
+      trigger,
+      target: describeNode(event && event.target),
+      activeElement: describeNode(document.activeElement),
+      ...details
+    });
   }
 
   function dispatchTextareaInput(textarea) {
@@ -226,36 +293,69 @@
 
   function handleEditableTarget(target, event) {
     if (!target) {
-      return false;
+      return { handled: false, reason: 'no supported editable target', editableKind: null };
     }
 
     if (target.kind === 'textarea') {
-      return handleTextareaTrigger(target.element);
+      return handleTextareaTrigger(target.element)
+        ? { handled: true, reason: 'handled', editableKind: 'textarea' }
+        : { handled: false, reason: 'textarea selection unavailable', editableKind: 'textarea' };
     }
 
-    return handleContentEditableTrigger(target.element, event);
+    return handleContentEditableTrigger(target.element, event)
+      ? { handled: true, reason: 'handled', editableKind: 'contenteditable' }
+      : { handled: false, reason: 'no usable selection or caret inside editable', editableKind: 'contenteditable' };
+  }
+
+  function getEventPath(event) {
+    if (!event || typeof event.composedPath !== 'function') {
+      return [];
+    }
+
+    const path = event.composedPath();
+    return Array.isArray(path) ? path : [];
+  }
+
+  function resolveEditableTarget(candidates) {
+    const seen = new Set();
+
+    for (const node of candidates) {
+      if (!node || seen.has(node)) {
+        continue;
+      }
+
+      seen.add(node);
+
+      const element = getElement(node);
+
+      if (isSupportedTextarea(element)) {
+        return { kind: 'textarea', element };
+      }
+
+      const editable = findContentEditable(node);
+
+      if (editable) {
+        return { kind: 'contenteditable', element: editable };
+      }
+    }
+
+    return null;
   }
 
   function getKeyboardEditableTarget(event) {
-    const activeElement = document.activeElement;
-
-    if (isSupportedTextarea(activeElement)) {
-      return { kind: 'textarea', element: activeElement };
-    }
-
-    const editable = findContentEditable(event.target) || findContentEditable(activeElement);
-    return editable ? { kind: 'contenteditable', element: editable } : null;
+    return resolveEditableTarget([
+      document.activeElement,
+      ...getEventPath(event),
+      event.target
+    ]);
   }
 
   function getMouseEditableTarget(event) {
-    const element = getElement(event.target);
-
-    if (isSupportedTextarea(element)) {
-      return { kind: 'textarea', element };
-    }
-
-    const editable = findContentEditable(event.target);
-    return editable ? { kind: 'contenteditable', element: editable } : null;
+    return resolveEditableTarget([
+      ...getEventPath(event),
+      event.target,
+      document.activeElement
+    ]);
   }
 
   document.addEventListener('keydown', (event) => {
@@ -263,7 +363,10 @@
       return;
     }
 
-    if (handleEditableTarget(getKeyboardEditableTarget(event), event)) {
+    const result = handleEditableTarget(getKeyboardEditableTarget(event), event);
+    debugLog('AltRight', event, result);
+
+    if (result.handled) {
       event.preventDefault();
     }
   });
@@ -273,7 +376,10 @@
       return;
     }
 
-    if (handleEditableTarget(getMouseEditableTarget(event), event)) {
+    const result = handleEditableTarget(getMouseEditableTarget(event), event);
+    debugLog('MiddleMouse', event, result);
+
+    if (result.handled) {
       event.preventDefault();
     }
   });

@@ -12,11 +12,12 @@ This Chrome Extension inserts or wraps a Markdown fenced code block inside suppo
 ## Supported targets
 
 - `textarea`
-- `contenteditable` editors
+- `contenteditable` / rich text editors
 
 ## Intentionally ignored
 
 - all single-line `input` fields
+- search inputs such as Baidu search
 - middle-click outside editable contexts
 - `contenteditable="false"` regions
 - options page not supported yet
@@ -45,6 +46,28 @@ This Chrome Extension inserts or wraps a Markdown fenced code block inside suppo
 - After changes, the extension dispatches an `input` event so framework-driven editors can detect the update.
 - `textarea` scroll position is restored after insertion to reduce jumpiness in long inputs.
 
+## Compatibility notes
+
+- GitHub Issue description `textarea`: supported
+- ChatGPT input box: supported
+- Telegram Web: may work if its editor exposes a compatible `contenteditable` or `role="textbox"` structure in the same document
+- Telegram Web may still fail if its editor is hidden behind iframe, closed shadow DOM, or a non-standard caret model
+- Baidu search input is intentionally ignored
+
+## Debug mode
+
+`content.js` includes:
+
+```js
+const DEBUG = false;
+```
+
+Set it to `true` locally if you want console logs for:
+- trigger type (`AltRight` or middle mouse)
+- event target tag/class/role/contenteditable info
+- detected editable kind
+- reason a trigger was handled or ignored
+
 ## How to load locally in Chrome
 
 1. Open `chrome://extensions`
@@ -55,17 +78,13 @@ This Chrome Extension inserts or wraps a Markdown fenced code block inside suppo
 
 ## Manual test checklist
 
-- [ ] Existing GitHub Issue description `textarea` still works with Right Alt
+- [ ] GitHub Issue description `textarea` still works
 - [ ] GitHub Issue title `input` still does not trigger
-- [ ] Holding Right Alt in `textarea` inserts at most one code block
-- [ ] Release Right Alt, then press it again: inserts one new block
-- [ ] Middle-click inside `textarea`: inserts or wraps using the current caret/selection
-- [ ] Middle-click inside ChatGPT-style `contenteditable`: inserts fenced code block
-- [ ] Middle-click inside `contenteditable` with selected text: wraps selected text
-- [ ] GitHub `contenteditable` comment/editor, if available: Right Alt or middle-click inserts or wraps
-- [ ] Normal webpage selected text outside an editor is not modified
+- [ ] ChatGPT input still works with Right Alt and middle mouse
+- [ ] Baidu search box still does not trigger
+- [ ] Telegram Web input works if it uses a compatible rich editor structure
 - [ ] Middle-click on links, buttons, or page background keeps normal page/browser behavior
-- [ ] Left Alt does not trigger
+- [ ] Normal webpage selected text outside an editor is not modified
 - [ ] No `console.error` or uncaught exception during normal use
 
 ## Known limitations
@@ -73,5 +92,6 @@ This Chrome Extension inserts or wraps a Markdown fenced code block inside suppo
 - Single-line `input` fields are intentionally ignored
 - `contenteditable="false"` regions are intentionally ignored
 - Middle-click only works inside supported editable targets
+- Telegram Web may not work if its editor lives inside iframe/closed shadow DOM or uses a non-standard editing surface
 - No settings page yet
 - No popup yet
