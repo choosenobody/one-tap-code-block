@@ -5,7 +5,7 @@
 1. Load the unpacked extension in Chrome.
 2. Confirm the extension icon appears.
 3. Open Chrome DevTools console and verify there is no startup error.
-4. Verify the extension version is `2.0.0`.
+4. Verify the extension version is `2.0.1`.
 
 ## Core regression checklist
 
@@ -15,12 +15,13 @@
 - [ ] ChatGPT input: inserted backticks remain intact after another keystroke
 - [ ] ChatGPT input: inserted backticks remain intact after editor rerender / focus change
 - [ ] ChatGPT input: cursor lands between empty code fences
-- [ ] ChatGPT input: selected text is wrapped in a code block
+- [ ] ChatGPT input: **selected text is preserved unchanged** when wrapped (v2.0.0 regression: the original selection disappeared; v2.0.1 must NOT lose or duplicate the selected text)
 - [ ] ChatGPT input: Shift + Right Alt inserts an empty `<source>` block
 - [ ] ChatGPT input: Shift + Right Alt wraps selected text in `<source>...</source>`
 - [ ] ChatGPT input: middle mouse inserts a code block
 - [ ] ChatGPT input: Shift + middle mouse inserts a source block
 - [ ] ChatGPT input: no duplicate insertion event is observed
+- [ ] ChatGPT input: **after wrapping a selection, typing characters must extend the selected content rather than overwrite it**
 
 ### Fence collision
 
