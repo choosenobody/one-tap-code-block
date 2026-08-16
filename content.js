@@ -1,6 +1,9 @@
 (() => {
   const DEBUG = false;
 
+  const MODE_CODE = 'code';
+  const MODE_SOURCE = 'source';
+
   function isSupportedTextarea(element) {
     return element instanceof HTMLTextAreaElement && !element.disabled && !element.readOnly;
   }
@@ -104,23 +107,66 @@
     });
   }
 
-  function dispatchTextareaInput(textarea) {
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  function dispatchTextareaInput(textarea, text) {
+    try {
+      textarea.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        inputType: 'insertText',
+        data: text
+      }));
+    } catch {
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
-  function dispatchContentEditableInput(editable) {
+  function dispatchContentEditableInput(editable, text) {
     try {
       editable.dispatchEvent(new InputEvent('input', {
         bubbles: true,
         inputType: 'insertText',
-        data: null
+        data: text
       }));
     } catch {
       editable.dispatchEvent(new Event('input', { bubbles: true }));
     }
   }
 
-  function insertOrWrapTextarea(textarea) {
+  function getLongestBacktickRun(text) {
+    const runs = String(text || '').match(/`+/g);
+    return runs ? Math.max(...runs.map((run) => run.length)) : 0;
+  }
+
+  function getCodeFence(text) {
+    return '`'.repeat(Math.max(3, getLongestBacktickRun(text) + 1));
+  }
+
+  function buildBlock(mode, selectedText) {
+    if (mode === MODE_SOURCE) {
+      return {
+        text: `<source>\n${selectedText}\n</source>`,
+        cursorOffset: selectedText ? `<source>\n${selectedText}`.length : '<source>\n'.length
+      };
+    }
+
+    const fence = getCodeFence(selectedText);
+    return {
+      text: `${fence}\n${selectedText}\n${fence}`,
+      cursorOffset: selectedText ? `${fence}\n${selectedText}`.length : fence.length + 1
+    };
+  }
+
+  function getWrappedInsertion(mode, selectedText, charBefore, charAfter) {
+    const block = buildBlock(mode, selectedText);
+    const prefix = charBefore === '' || charBefore === '\n' ? '' : '\n\n';
+    const suffix = charAfter === '' || charAfter === '\n' ? '' : '\n';
+
+    return {
+      text: `${prefix}${block.text}${suffix}`,
+      cursorOffset: prefix.length + block.cursorOffset
+    };
+  }
+
+  function insertOrWrapTextarea(textarea, mode) {
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
@@ -131,25 +177,28 @@
     const value = textarea.value;
     const scrollTop = textarea.scrollTop;
     const selectedText = value.slice(start, end);
-    let insertedText;
-    let cursor;
+    let insertion;
 
     if (start === end) {
-      insertedText = '```\n\n```';
-      cursor = start + 4;
+      const block = buildBlock(mode, '');
+      insertion = {
+        text: block.text,
+        cursorOffset: block.cursorOffset
+      };
     } else {
-      const charBefore = value[start - 1];
-      const charAfter = value[end];
-      const prefix = start === 0 || charBefore === '\n' ? '' : '\n\n';
-      const suffix = end === value.length || charAfter === '\n' ? '' : '\n';
-
-      insertedText = `${prefix}\`\`\`\n${selectedText}\n\`\`\`${suffix}`;
-      cursor = start + prefix.length + 4 + selectedText.length;
+      insertion = getWrappedInsertion(
+        mode,
+        selectedText,
+        value[start - 1] || '',
+        value[end] || ''
+      );
     }
 
-    textarea.value = value.slice(0, start) + insertedText + value.slice(end);
-    dispatchTextareaInput(textarea);
+    textarea.setRangeText(insertion.text, start, end, 'end');
+    dispatchTextareaInput(textarea, insertion.text);
     textarea.focus();
+
+    const cursor = start + insertion.cursorOffset;
     textarea.setSelectionRange(cursor, cursor);
     textarea.scrollTop = scrollTop;
 
@@ -190,21 +239,78 @@
     };
   }
 
-  function replaceSelectionWithText(selection, range, text, cursorOffset) {
+  function moveCaretBackward(selection, characterCount) {
+    let remaining = Math.max(0, characterCount);
+
+    if (remaining === 0) {
+      return true;
+    }
+
+    if (
+      selection.anchorNode instanceof Text &&
+      selection.isCollapsed &&
+      selection.anchorOffset >= remaining
+    ) {
+      const range = document.createRange();
+      range.setStart(selection.anchorNode, selection.anchorOffset - remaining);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return true;
+    }
+
+    if (typeof selection.modify !== 'function') {
+      return false;
+    }
+
+    while (remaining > 0) {
+      selection.modify('move', 'backward', 'character');
+      remaining -= 1;
+    }
+
+    return true;
+  }
+
+  function replaceSelectionWithTextFallback(editable, selection, range, text, cursorOffset) {
     const textNode = document.createTextNode(text);
 
     range.deleteContents();
     range.insertNode(textNode);
 
     const nextRange = document.createRange();
-    nextRange.setStart(textNode, cursorOffset);
+    nextRange.setStart(textNode, Math.min(cursorOffset, textNode.data.length));
     nextRange.collapse(true);
 
     selection.removeAllRanges();
     selection.addRange(nextRange);
+
+    dispatchContentEditableInput(editable, text);
+    return true;
   }
 
-  function insertOrWrapContentEditable(editable) {
+  function insertTextNative(editable, selection, range, text, cursorOffset) {
+    editable.focus();
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    let inserted = false;
+
+    try {
+      inserted = document.execCommand('insertText', false, text);
+    } catch {
+      inserted = false;
+    }
+
+    if (!inserted) {
+      return false;
+    }
+
+    moveCaretBackward(selection, text.length - cursorOffset);
+    return true;
+  }
+
+  function insertOrWrapContentEditable(editable, mode) {
     const selectionState = getSelectionRange(editable);
 
     if (!selectionState) {
@@ -213,26 +319,54 @@
 
     const { selection, range } = selectionState;
     const selectedText = range.toString();
-    let insertedText;
-    let cursor;
+    const boundary = getBoundaryCharacters(editable, range);
+    let insertion;
 
     if (selection.isCollapsed) {
-      insertedText = '```\n\n```';
-      cursor = 4;
+      const block = buildBlock(mode, '');
+      insertion = {
+        text: block.text,
+        cursorOffset: block.cursorOffset
+      };
     } else {
-      const { charBefore, charAfter } = getBoundaryCharacters(editable, range);
-      const prefix = charBefore === '' || charBefore === '\n' ? '' : '\n\n';
-      const suffix = charAfter === '' || charAfter === '\n' ? '' : '\n';
-
-      insertedText = `${prefix}\`\`\`\n${selectedText}\n\`\`\`${suffix}`;
-      cursor = prefix.length + 4 + selectedText.length;
+      insertion = getWrappedInsertion(
+        mode,
+        selectedText,
+        boundary.charBefore,
+        boundary.charAfter
+      );
     }
 
-    replaceSelectionWithText(selection, range, insertedText, cursor);
-    editable.focus();
-    dispatchContentEditableInput(editable);
+    // Prefer the direct Range path. Chromium's execCommand('insertText') has two
+    // long-standing bugs that bite us here:
+    //   1. Newlines in the data argument are silently dropped in many contexts
+    //      (e.g. contenteditable="plaintext-only" editors such as ChatGPT), so
+    //      "```\n\n```" lands as "``````".
+    //   2. Some controlled editors run their own input rules against insertText
+    //      transactions and may consume Markdown characters we inserted.
+    // The Range path inserts a real text node with the newlines intact and lets
+    // selection.model drift remain confined to the user's caret intent. We only
+    // fall back to native execCommand when the Range path is impossible (e.g.
+    // the editor has rejected our DOM mutation).
+    const replaced = replaceSelectionWithTextFallback(
+      editable,
+      selection,
+      range,
+      insertion.text,
+      insertion.cursorOffset
+    );
 
-    return true;
+    if (replaced) {
+      return true;
+    }
+
+    return insertTextNative(
+      editable,
+      selection,
+      range,
+      insertion.text,
+      insertion.cursorOffset
+    );
   }
 
   function getPointRange(x, y) {
@@ -274,12 +408,12 @@
     return true;
   }
 
-  function handleTextareaTrigger(textarea) {
+  function handleTextareaTrigger(textarea, mode) {
     textarea.focus();
-    return insertOrWrapTextarea(textarea);
+    return insertOrWrapTextarea(textarea, mode);
   }
 
-  function handleContentEditableTrigger(editable, event) {
+  function handleContentEditableTrigger(editable, event, mode) {
     editable.focus();
 
     if (!getSelectionRange(editable)) {
@@ -288,23 +422,23 @@
       }
     }
 
-    return insertOrWrapContentEditable(editable);
+    return insertOrWrapContentEditable(editable, mode);
   }
 
-  function handleEditableTarget(target, event) {
+  function handleEditableTarget(target, event, mode) {
     if (!target) {
-      return { handled: false, reason: 'no supported editable target', editableKind: null };
+      return { handled: false, reason: 'no supported editable target', editableKind: null, mode };
     }
 
     if (target.kind === 'textarea') {
-      return handleTextareaTrigger(target.element)
-        ? { handled: true, reason: 'handled', editableKind: 'textarea' }
-        : { handled: false, reason: 'textarea selection unavailable', editableKind: 'textarea' };
+      return handleTextareaTrigger(target.element, mode)
+        ? { handled: true, reason: 'handled', editableKind: 'textarea', mode }
+        : { handled: false, reason: 'textarea selection unavailable', editableKind: 'textarea', mode };
     }
 
-    return handleContentEditableTrigger(target.element, event)
-      ? { handled: true, reason: 'handled', editableKind: 'contenteditable' }
-      : { handled: false, reason: 'no usable selection or caret inside editable', editableKind: 'contenteditable' };
+    return handleContentEditableTrigger(target.element, event, mode)
+      ? { handled: true, reason: 'handled', editableKind: 'contenteditable', mode }
+      : { handled: false, reason: 'no usable selection or caret inside editable', editableKind: 'contenteditable', mode };
   }
 
   function getEventPath(event) {
@@ -358,13 +492,18 @@
     ]);
   }
 
+  function getMode(event) {
+    return event.shiftKey ? MODE_SOURCE : MODE_CODE;
+  }
+
   document.addEventListener('keydown', (event) => {
     if (event.code !== 'AltRight' || event.repeat) {
       return;
     }
 
-    const result = handleEditableTarget(getKeyboardEditableTarget(event), event);
-    debugLog('AltRight', event, result);
+    const mode = getMode(event);
+    const result = handleEditableTarget(getKeyboardEditableTarget(event), event, mode);
+    debugLog(mode === MODE_SOURCE ? 'Shift+AltRight' : 'AltRight', event, result);
 
     if (result.handled) {
       event.preventDefault();
@@ -376,8 +515,9 @@
       return;
     }
 
-    const result = handleEditableTarget(getMouseEditableTarget(event), event);
-    debugLog('MiddleMouse', event, result);
+    const mode = getMode(event);
+    const result = handleEditableTarget(getMouseEditableTarget(event), event, mode);
+    debugLog(mode === MODE_SOURCE ? 'Shift+MiddleMouse' : 'MiddleMouse', event, result);
 
     if (result.handled) {
       event.preventDefault();

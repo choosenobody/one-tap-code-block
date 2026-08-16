@@ -1,11 +1,22 @@
 # One Tap Code Block
 
-One Tap Code Block is a minimal Chrome Extension that inserts or wraps Markdown fenced code blocks in supported editors.
+One Tap Code Block is a minimal Chrome Extension for quickly structuring text in AI chat boxes and other supported editors.
 
-## Supported triggers
+V2 supports two formatting modes:
 
-- **Right Alt**
-- **Middle mouse button** inside supported editable areas only
+- **Code Block Mode**: Markdown fenced blocks
+- **Source Mode**: semantic `<source>...</source>` blocks for material you want an AI to analyze
+
+## Triggers
+
+| Trigger | Result |
+|---|---|
+| **Right Alt** | Code Block Mode |
+| **Shift + Right Alt** | Source Mode |
+| **Middle mouse button** | Code Block Mode |
+| **Shift + Middle mouse button** | Source Mode |
+
+Middle mouse triggers are intercepted only inside supported editable areas.
 
 ## Supported editing contexts
 
@@ -25,37 +36,69 @@ One Tap Code Block is a minimal Chrome Extension that inserts or wraps Markdown 
 - GitHub Issue description `textarea`
 - ChatGPT message input
 
+## Behavior
+
+### Code Block Mode
+
+With no selection, the extension inserts:
+
+````text
+```
+
+```
+````
+
+and places the cursor on the empty line between the fences.
+
+With selected text:
+
+````text
+```
+selected text
+```
+````
+
+The selected content is replaced by a plain-text fenced block and the cursor lands after the selected text, before the closing fence.
+
+If the selected text already contains a run of three or more backticks, the outer fence automatically grows to one backtick longer than the longest inner run. This avoids nested fence collisions.
+
+### Source Mode
+
+With no selection:
+
+```xml
+<source>
+
+</source>
+```
+
+With selected text:
+
+```xml
+<source>
+selected text
+</source>
+```
+
+This mode is intended for articles, financial excerpts, research output, quoted opinions, or other source material that should be clearly separated from the user's instruction.
+
+## ChatGPT / rich editor compatibility
+
+V2 changes the `contenteditable` insertion path. The extension:
+
+1. tries a direct Range insertion (insertNode + select) first;
+2. falls back to `document.execCommand('insertText', ...)` only when Range insertion is rejected.
+
+The Range path inserts a real text node with newlines intact and avoids the silent newline-stripping bug that affects Chromium's `execCommand('insertText', ..., "\n\n")`. The native execCommand path remains available as a compatibility fallback for editors that refuse to keep manually inserted DOM.
+
+For `textarea`, V2 uses `setRangeText()` for one-shot replacement and then dispatches the input event.
+
 ## Compatibility notes
 
 - Telegram Web may work if its editor exposes a compatible `contenteditable` or `role="textbox"` structure in the same document.
 - Telegram Web may still fail if its editor lives inside iframe, closed shadow DOM, or uses a non-standard caret model.
 - Baidu search input is intentionally ignored.
-
-## Behavior summary
-
-- No selection: inserts
-
-  ```
-
-  ```
-
-  and places the cursor on the empty line between the fences.
-- With selection: wraps the selected text as a clean fenced block
-
-  ```
-  selected text
-  ```
-
-  and places the cursor after the selected text, before the newline and closing fence.
-- Holding Right Alt inserts at most one block per physical press.
-- Releasing and pressing Right Alt again inserts one new block.
-- Middle mouse only intercepts clicks inside supported editable areas.
-
-## Branding assets
-
-- Runtime extension icons live in `icons/` and are referenced by `manifest.json`.
-- A separate high-resolution store/display asset lives at `branding/store-icon-512.png`.
-- Chrome still uses the manifest icon set for the installed extension surface, so this split is mainly for release packaging, docs, and store-facing materials.
+- `document.execCommand()` is deprecated as a general web API, but Chromium still supports `insertText`; V2 retains a Range-based fallback for editors where the native transaction is unavailable.
 
 ## Debug mode
 
@@ -66,9 +109,11 @@ const DEBUG = false;
 ```
 
 Set it to `true` locally only for troubleshooting. When enabled, it logs:
+
 - trigger type
 - event target info
 - detected editable kind
+- active formatting mode
 - reason a trigger was handled or ignored
 
 ## Load unpacked locally
@@ -90,6 +135,7 @@ Then reload the extension in `chrome://extensions`.
 ## Manual packaging as ZIP
 
 Package only the extension files you need:
+
 - `manifest.json`
 - `content.js`
 - `icons/`
@@ -97,6 +143,7 @@ Package only the extension files you need:
 - `CHANGELOG.md` / `docs/` (optional for tester docs)
 
 Do **not** include:
+
 - `.git/`
 - local temp files
 - editor settings or OS junk files
@@ -104,7 +151,7 @@ Do **not** include:
 Example from the project root:
 
 ```bash
-zip -r one-tap-code-block-0.3.1.zip manifest.json content.js icons README.md CHANGELOG.md docs
+zip -r one-tap-code-block-2.0.0.zip manifest.json content.js icons README.md CHANGELOG.md docs
 ```
 
 ## Privacy
