@@ -93,6 +93,14 @@ The Range path inserts a real text node with newlines intact and avoids the sile
 
 For `textarea`, V2 uses `setRangeText()` for one-shot replacement and then dispatches the input event.
 
+### v2.0.1 selection-wrap fix
+
+V2.0.0 destroyed the user's selected text in some controlled/ProseMirror-class editors (e.g. ChatGPT) by calling `range.deleteContents()` and then dispatching a synthetic `InputEvent(data)` whose `data` duplicated the inserted string. The host editor's reactive reconciler rebuilt its internal state from the (stale) string and discarded the user's selected content. V2.0.1 fixes this:
+
+- inserts fence fragments as plain text nodes anchored to the editor's DOM via two independent Range coordinates;
+- preserves the user's selected DOM untouched (no `deleteContents`);
+- dispatches a plain bubbling `input` event with **no `data`** so reactive reconcilers re-read from the live DOM instead of substituting a stale string.
+
 ## Compatibility notes
 
 - Telegram Web may work if its editor exposes a compatible `contenteditable` or `role="textbox"` structure in the same document.

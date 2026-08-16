@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2.0.1
+- **CRITICAL FIX — selection-wrap on ChatGPT-class editors**: v2.0.0 destroyed the user's selected text by `range.deleteContents()` then re-inserted the wrapped string with a synthetic `InputEvent(data)`. ProseMirror-style editors reconciled the manual DOM and substituted their own interpretation, dropping the user's selection. v2.0.1 inserts fence fragments as plain text nodes anchored to the editor's DOM using two independent Range coordinates; the selected content is preserved untouched.
+- **No synthetic InputEvent with stale data**: v2.0.1 dispatches a plain bubbling `input` event (no `data`) after direct DOM mutation, so reactive reconcilers re-read from the live DOM instead of substituting a stale string.
+- **First-Right-Alt regression fixed**: v2.0.0's first-Right-Alt on ChatGPT dropped the opening fence via ProseMirror's Markdown input rule. v2.0.1 fires the input event so the host editor reconciles correctly.
+- End anchor inserted first, then start anchor; both anchors are captured as Range snapshots before any mutation, so neither insert can shift the other's coordinates.
+- Headless harness extended with a controlled/ProseMirror-like editor fixture (`fixtures/chatgpt-pm.html`) and assertion matrix that reproduces the v2.0.0 failure modes on the v2.0.1 candidate.
+
 ## 2.0.0
 - add Source Mode with `<source>...</source>`
 - add Shift + Right Alt and Shift + middle mouse source-block triggers

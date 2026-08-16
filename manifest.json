@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "One Tap Code Block",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Insert or wrap Markdown code blocks and AI source blocks in supported editors.",
   "content_scripts": [
     {
