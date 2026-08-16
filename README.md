@@ -84,15 +84,12 @@ This mode is intended for articles, financial excerpts, research output, quoted 
 
 ## ChatGPT / rich editor compatibility
 
-V2 changes the `contenteditable` insertion path.
+V2 changes the `contenteditable` insertion path. The extension:
 
-The extension now:
+1. tries a direct Range insertion (insertNode + select) first;
+2. falls back to `document.execCommand('insertText', ...)` only when Range insertion is rejected.
 
-1. tries a browser-native editing transaction with `document.execCommand('insertText', ...)`;
-2. lets the editor receive the native insertion behavior instead of mutating its DOM first;
-3. falls back to direct Range insertion only when the native path is unavailable.
-
-This is designed to be more resilient with modern controlled/rich editors such as ChatGPT, where direct DOM mutation can be overwritten during editor state reconciliation.
+The Range path inserts a real text node with newlines intact and avoids the silent newline-stripping bug that affects Chromium's `execCommand('insertText', ..., "\n\n")`. The native execCommand path remains available as a compatibility fallback for editors that refuse to keep manually inserted DOM.
 
 For `textarea`, V2 uses `setRangeText()` for one-shot replacement and then dispatches the input event.
 

@@ -337,19 +337,30 @@
       );
     }
 
-    const nativeRange = range.cloneRange();
-
-    if (insertTextNative(
+    // Prefer the direct Range path. Chromium's execCommand('insertText') has two
+    // long-standing bugs that bite us here:
+    //   1. Newlines in the data argument are silently dropped in many contexts
+    //      (e.g. contenteditable="plaintext-only" editors such as ChatGPT), so
+    //      "```\n\n```" lands as "``````".
+    //   2. Some controlled editors run their own input rules against insertText
+    //      transactions and may consume Markdown characters we inserted.
+    // The Range path inserts a real text node with the newlines intact and lets
+    // selection.model drift remain confined to the user's caret intent. We only
+    // fall back to native execCommand when the Range path is impossible (e.g.
+    // the editor has rejected our DOM mutation).
+    const replaced = replaceSelectionWithTextFallback(
       editable,
       selection,
-      nativeRange,
+      range,
       insertion.text,
       insertion.cursorOffset
-    )) {
+    );
+
+    if (replaced) {
       return true;
     }
 
-    return replaceSelectionWithTextFallback(
+    return insertTextNative(
       editable,
       selection,
       range,

@@ -37,6 +37,7 @@
 - [ ] Selected text wrapping works
 - [ ] Empty block insertion works
 - [ ] Cursor placement is correct after insertion
+- [ ] Three-backticks run (2, 3, 5 → outer 3, 4, 6) expansion works
 
 ## Existing behavior regression
 
